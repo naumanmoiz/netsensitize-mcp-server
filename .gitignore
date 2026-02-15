@@ -18,13 +18,27 @@ venv/
 
 # Logs
 docs/logs/*.json
+docs/logs/*.jsonl
 
 # Coverage
 .coverage
 htmlcov/
+.hypothesis/
 
 # OS
 .DS_Store
 
 # Environment
 .env
+
+# ai
+ai/
+
+# config
+config/
+
+# Chat logs
+docs/chat/
+
+# Claude
+CLAUDE.md

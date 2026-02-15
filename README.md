@@ -8,10 +8,16 @@ MCP-compatible FastAPI server that redacts sensitive network data (IPv4, IPv6, M
 # Install dependencies (Poetry required)
 poetry install
 
+# Required secret for deterministic mode
+export MCP_DETERMINISTIC_SECRET="change-me-super-secret-string"
+
+# (Optional) Redis backend
+export MCP_REDIS_URL="redis://localhost:6379/0"
+
 # Run the server
 poetry run uvicorn redact_mcp.main:app --host 0.0.0.0 --port 10694
 
-# Run tests
+# Run tests (coverage threshold enforced at 95%)
 poetry run pytest
 ```
 
@@ -50,17 +56,20 @@ curl -X POST http://localhost:10694/redact \
 
 **Modes:**
 - `random` (default) — cryptographically random replacements
-- `deterministic` — HMAC-SHA256 derived; consistent within a request, different across requests
+- `deterministic` — HMAC-SHA256 derived; consistent across requests when `MCP_DETERMINISTIC_SECRET` is set
 
 ## Architecture
 
 ```
 src/redact_mcp/
   __init__.py         # Package init, __version__
-  main.py             # FastAPI app, middleware, endpoints
+  config.py           # Pydantic settings with env-driven configuration
+  main.py             # FastAPI app, middleware orchestration, endpoints
   models.py           # Pydantic v2 schemas
   redactor.py         # Core regex-based redaction engine
-  storage.py          # Thread-safe in-memory mapping store
+  storage.py          # In-memory and Redis mapping stores with TTL
+  rate_limiter.py     # Sliding window rate limiter
+  middleware.py       # Request context, size, timeout, logging, and rate limit middleware
   logging_config.py   # Structured JSON logging
 ```
 
@@ -68,15 +77,28 @@ src/redact_mcp/
 
 **Pattern priority:** IPv6 is matched before IPv4 to prevent partial matches on embedded addresses (e.g., `::ffff:192.168.1.1`).
 
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_DETERMINISTIC_SECRET` | _required_ | HMAC key for deterministic mode (32+ chars). |
+| `MCP_MAX_PAYLOAD_BYTES` | `1048576` | Maximum allowed request payload size. |
+| `MCP_RATE_LIMIT_REQUESTS` | `120` | Allowed requests per IP within the window. |
+| `MCP_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rate limit sliding window in seconds. |
+| `MCP_REQUEST_TIMEOUT_SECONDS` | `15` | Request processing timeout. |
+| `MCP_MAPPING_TTL_SECONDS` | `86400` | Mapping retention TTL (in-memory and Redis). |
+| `MCP_REDIS_URL` | _unset_ | Enable Redis-backed mapping store when provided. |
+| `MCP_REDIS_SSL` | `false` | Toggle TLS for Redis connections. |
+
 ## Security
 
-- Per-request engine instances — no shared mutable state
-- `secrets` module for random replacements (CSPRNG)
-- HMAC-SHA256 with per-request salt for deterministic mode
-- 1 MB payload size limit
-- No raw data in logs
-- Regex patterns designed to resist ReDoS
-- Runs as non-root via systemd hardening
+- Deterministic replacements backed by user-provided HMAC secret
+- ReDoS-hardened regex patterns with exhaustive fuzz tests
+- Per-request engine instances, thread-safe stores, and TTL eviction to prevent leakage
+- Structured JSON logging without raw payload retention (logs written to `docs/logs/*.jsonl`)
+- Centralized exception handling, rate limiting, and payload guards
+- Optional Redis backend for horizontal scaling with readiness and graceful shutdown checks
+- Non-root Docker image (`oraclelinux:9-slim`) with uvicorn on port 10694
 
 ## Deployment (systemd)
 
@@ -103,3 +125,17 @@ poetry run pytest tests/test_redactor.py::TestIPv4Replacement::test_single_ipv4 
 ```
 
 Target: Python 3.11+, Oracle Linux, port 10694.
+
+## Docker
+
+```bash
+# Build the container
+docker build -t netsensitize:latest .
+
+# Run (deterministic mode requires a secret)
+docker run -p 10694:10694 \
+  -e MCP_DETERMINISTIC_SECRET="change-me-super-secret-string" \
+  netsensitize:latest
+```
+
+The image runs as a non-root user and exposes uvicorn on port `10694`.

@@ -5,6 +5,7 @@ import re
 import secrets
 import uuid
 from hashlib import sha256
+from typing import Optional
 
 from .models import RedactMode
 
@@ -70,11 +71,22 @@ PATTERNS = [
 class RedactorEngine:
     """Per-request redaction engine. No shared mutable state between instances."""
 
-    def __init__(self, mode: RedactMode = RedactMode.random) -> None:
+    def __init__(
+        self,
+        mode: RedactMode = RedactMode.random,
+        deterministic_secret: Optional[bytes] = None,
+        deterministic_context: str = "default",
+    ) -> None:
         self.mapping_id = uuid.uuid4()
         self.mode = mode
         self._mapping: dict[str, str] = {}
-        self._salt = secrets.token_bytes(32)
+        if mode == RedactMode.deterministic:
+            if deterministic_secret is None:
+                raise ValueError("Deterministic mode requires a secret key")
+            context_bytes = deterministic_context.encode("utf-8")
+            self._deterministic_key = sha256(deterministic_secret + context_bytes).digest()
+        else:
+            self._deterministic_key = None
 
     def redact(self, text: str) -> tuple[str, dict[str, str]]:
         """Redact all sensitive patterns from text.
@@ -104,7 +116,8 @@ class RedactorEngine:
 
     def _deterministic_replacement(self, original: str, pattern_type: str) -> str:
         """HMAC-SHA256 derived replacement — consistent within request, different across requests."""
-        digest = hmac.new(self._salt, original.encode(), sha256).digest()
+        assert self._deterministic_key is not None  # For type checkers
+        digest = hmac.new(self._deterministic_key, original.encode(), sha256).digest()
         if pattern_type == "ipv4":
             return self._ipv4_from_bytes(digest)
         elif pattern_type == "ipv6":

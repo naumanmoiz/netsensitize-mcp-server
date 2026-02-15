@@ -8,6 +8,9 @@ from redact_mcp.models import RedactMode
 from redact_mcp.redactor import IPV4_RE, IPV6_RE, MAC_RE, RedactorEngine
 
 
+DETERMINISTIC_SECRET = b"unit-test-deterministic-secret-000000"
+
+
 # --- IPv4 Tests ---
 
 
@@ -88,21 +91,32 @@ class TestIPv6Replacement:
 
 class TestDeterministicMode:
     def test_same_input_same_output(self):
-        engine = RedactorEngine(mode=RedactMode.deterministic)
+        engine = RedactorEngine(
+            mode=RedactMode.deterministic,
+            deterministic_secret=DETERMINISTIC_SECRET,
+        )
         result1, _ = engine.redact("192.168.1.1")
         result2, _ = engine.redact("192.168.1.1")
         assert result1 == result2
 
-    def test_different_requests_different_output(self):
-        engine1 = RedactorEngine(mode=RedactMode.deterministic)
-        engine2 = RedactorEngine(mode=RedactMode.deterministic)
+    def test_different_requests_same_output(self):
+        engine1 = RedactorEngine(
+            mode=RedactMode.deterministic,
+            deterministic_secret=DETERMINISTIC_SECRET,
+        )
+        engine2 = RedactorEngine(
+            mode=RedactMode.deterministic,
+            deterministic_secret=DETERMINISTIC_SECRET,
+        )
         result1, _ = engine1.redact("192.168.1.1")
         result2, _ = engine2.redact("192.168.1.1")
-        # Different salts → different replacements (statistically guaranteed)
-        assert result1 != result2
+        assert result1 == result2
 
     def test_replacement_is_valid_ipv4(self):
-        engine = RedactorEngine(mode=RedactMode.deterministic)
+        engine = RedactorEngine(
+            mode=RedactMode.deterministic,
+            deterministic_secret=DETERMINISTIC_SECRET,
+        )
         result, _ = engine.redact("192.168.1.1")
         assert IPV4_RE.fullmatch(result)
 
@@ -124,6 +138,12 @@ class TestNoMutation:
         result, mapping = engine.redact(text)
         assert result == text
         assert len(mapping) == 0
+
+
+class TestSecurityProperties:
+    def test_deterministic_requires_secret(self):
+        with pytest.raises(ValueError):
+            RedactorEngine(mode=RedactMode.deterministic, deterministic_secret=None)
 
 
 # --- Mixed Pattern Tests ---
