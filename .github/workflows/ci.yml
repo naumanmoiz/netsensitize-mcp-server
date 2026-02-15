@@ -26,10 +26,10 @@ jobs:
         env:
           POETRY_VIRTUALENVS_CREATE: "false"
         run: |
-          poetry install --no-root
+          poetry install
 
       - name: Run tests
         env:
           MCP_DETERMINISTIC_SECRET: "ci-deterministic-secret-please-change"
         run: |
-          pytest
+          poetry run pytest
