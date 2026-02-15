@@ -1,0 +1,25 @@
+[Unit]
+Description=Redact MCP Server - Network Data Redaction Service
+After=network.target
+
+[Service]
+Type=simple
+User=redactmcp
+Group=redactmcp
+WorkingDirectory=/opt/redact-mcp
+ExecStart=/opt/redact-mcp/mcp/bin/uvicorn redact_mcp.main:app --host 0.0.0.0 --port 10694
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/redact-mcp/docs/logs
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,30 @@
+mcp/
+.claude/
+.opencode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+docs/logs/*.json
+
+# Coverage
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+
+# Environment
+.env

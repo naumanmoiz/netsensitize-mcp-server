@@ -1,0 +1,17 @@
+{
+    "shell": {
+      "allow_network_access": false,
+      "allow_sudo": false,
+      "allow_package_install": false,
+      "blocked_commands": [
+        "rm -rf /",
+        "shutdown",
+        "reboot",
+        "curl",
+        "wget",
+        "nc",
+        "ssh"
+      ],
+      "execution_timeout_seconds": 120
+    }
+  }

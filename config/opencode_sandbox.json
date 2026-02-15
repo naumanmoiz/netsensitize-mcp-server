@@ -1,0 +1,18 @@
+{
+    "agent": {
+      "mode": "workspace",
+      "require_explicit_approval_for_protected_paths": true,
+      "require_explicit_approval_for_destructive_actions": true
+    },
+    "validation": {
+      "allow_test_execution": true,
+      "allow_static_analysis": true,
+      "allow_security_scan": true
+    },
+    "filesystem": {
+      "read_only_paths": [
+        "/etc",
+        "/usr"
+      ]
+    }
+}

@@ -1,0 +1,13 @@
+{
+    "shell": {
+      "allow_network_access": false,
+      "allow_sudo": false,
+      "blocked_commands": [
+        "curl",
+        "wget",
+        "scp",
+        "ssh"
+      ],
+      "execution_timeout_seconds": 180
+    }
+}

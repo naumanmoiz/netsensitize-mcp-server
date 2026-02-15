@@ -1,0 +1,25 @@
+{
+    "agent": {
+      "mode": "workspace",
+      "require_explicit_approval_for_protected_paths": true,
+      "require_explicit_approval_for_destructive_actions": true
+    },
+    "filesystem": {
+      "workspace_root": "./",
+      "read_only_paths": [
+        "/etc",
+        "/usr",
+        "/bin",
+        "/sbin"
+      ],
+      "allowed_commands": [
+        "python3",
+        "pytest",
+        "uvicorn",
+        "poetry",
+        "ls",
+        "cat",
+        "grep"
+      ]
+    }
+  }
